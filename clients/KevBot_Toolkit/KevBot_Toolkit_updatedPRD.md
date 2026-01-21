@@ -64,7 +64,7 @@ A modular TradingView indicator that:
 - **Side Table:** Multi-timeframe analysis (6 configurable timeframes)
 - **Modular Libraries:** Plug-and-play indicator calculations
 - **Confluence Scoring:** Grade-based trade quality assessment (A/B/C grades)
-- **Position Engine:** Multi-entry position tracking with safety stops
+- **Position Engine:** Position tracking with safety stops
 - **Backtest KPIs:** Win rate, profit factor, max drawdown tracking
 
 ---
@@ -606,19 +606,15 @@ SHORT EXIT:
 **Location:** Top of chart (position configurable)
 
 **Columns:**
-| Module Name | Value/Status | Additional Info |
-|-------------|-------------|-----------------|
-| Long Confluence | Score: 250 | Grade: B |
-| Short Confluence | Score: 150 | Grade: C |
-| Position Sizing | Active: LONG | Qty: 100, Risk: $200 |
-| Backtest KPIs | Win Rate: 62% | PF: 1.8, Trades: 45 |
-| Top Module 1 | [Custom display] | [Library outputs] |
+Inherit similar structure that is currently in the code
 
 **Color Coding:**
-- Green: Bullish/Long signals
-- Red: Bearish/Short signals
-- Gray: Neutral/Inactive
+- Green: If the confluence state is true for a long entry
+- Red: if the confluence state is true for a short entry
+- Gray: Inactive for confluence calculations
 - Dark theme: Configurable via `useDarkTheme`
+- Blue: If the confluence state is true for both long and short entry
+- Yellow: If the confluence is being monitored but its condition is not yet meeting the criteria for a long or short entry
 
 ### 8.2 Side Table Layout
 
@@ -637,6 +633,8 @@ SHORT EXIT:
 - **Red:** Condition TRUE, contributes to Short score
 - **Gray:** Condition FALSE or TF disabled
 - **(R):** Required condition for that directional group
+- **Blue:** Condition TRUE, contributes to Short AND Long score
+- **Yellow:** Condition is FALSE
 
 ### 8.3 Chart Elements
 
@@ -644,7 +642,7 @@ SHORT EXIT:
 - Position labels (entry/exit markers)
 - Safety stop loss lines (`sl_show = true`)
 - Safety take profit lines (`tp_show = true`)
-- Raw chart marks (when Signal Type = "Chart Mark Only" or "Both")
+- Raw Trigger Only (when Signal Type = "Raw Trigger Only" or "Both")
 
 ---
 
@@ -666,9 +664,9 @@ SHORT EXIT:
 - [x] Top_Minimal library
 
 **Remaining:**
-- [ ] Top Table rendering (Module 12)
-- [ ] Complete backtest KPI calculations
+- [ ] Update Libraries and input options to support 6 parameters, 10 triggers, and 10 condition
 - [ ] Label plotting system
+- [ ] Complete backtest KPI calculations
 - [ ] CSV export functionality
 
 ### 9.2 Phase 2: Enhancement & Testing
@@ -677,7 +675,7 @@ SHORT EXIT:
 **Planned:**
 - [ ] Multiple Top Modules (Top2, Top3, Top4)
 - [ ] Multiple Side Modules (Side2, Side3, Side4)
-- [ ] Advanced entry/exit conditions
+- [ ] Advanced entry/exit conditions such as supporting multiple buys within the same trade
 - [ ] Alert system
 - [ ] Additional libraries (MACD, RSI, Volume, etc.)
 
@@ -752,20 +750,20 @@ SHORT EXIT:
 
 ### 11.1 Critical Issues
 
-**1. Top Table Not Yet Implemented**
-- **Impact:** Cannot display confluence summary, position sizing, or backtest KPIs
-- **Status:** Module 12 exists as stub, needs full implementation
-- **Blocker for:** User-facing functionality, CSV export
-
-**2. Label Plotting Incomplete**
+**1. Label Plotting Incomplete**
 - **Impact:** Entry/exit signals not visible on chart
 - **Status:** Position labels defined but not plotted
 - **Blocker for:** Visual confirmation of signals
 
-**3. CSV Export Not Implemented**
+**2. CSV Export Not Implemented**
 - **Impact:** Cannot analyze data in external tools
 - **Status:** No export mechanism exists yet
 - **Blocker for:** Primary use case (multivariate analysis)
+
+**3. Trigger Options Not Finalized
+- **Impact:** Not enough trigger options showing in input settings we should 10 trigger options and 10 confluence condition labels to choose from
+- **Status:** Currently it's showing 2 trigger options and only 2 confluence options 
+- **Blocker for:** Fully utilizing libraries as intended
 
 ### 11.2 Non-Critical Issues
 
@@ -773,13 +771,6 @@ SHORT EXIT:
 - Currently only supports Top Module 1 and Side Module 1
 - Future: Expand to Top2–Top4, Side2–Side4
 
-**2. Library Selection Hardcoded**
-- Library dropdown options manually maintained
-- Future: Auto-discover published libraries
-
-**3. Limited Backtest Filters**
-- Only time-of-day and day-of-week filters
-- Future: Add session templates, holiday filters
 
 ### 11.3 Technical Debt
 
@@ -808,19 +799,21 @@ SHORT EXIT:
 - [ ] Top Table rendering (Confluence Summary + Position Sizing + Backtest KPIs)
 - [x] Side Table rendering (1 Side Module across 6 TFs)
 - [x] At least 1 functional TF library (EMA Stack ✓)
-- [ ] Chart label plotting for entries/exits
-- [ ] Basic backtest KPIs (win rate, PF, total trades)
+- [ ] Chart label plotting for entries/exits, bullish and bearish labels that communicate trigger reason, and invisible labels
+- [ ] Basic backtest KPIs (win rate, PF, total trades) using single entry trades instead of multientries
+- [ ] CSV file export
+- [ ] Position labels with full metadata
 
 ### 12.2 Full Feature Set
 
 **Should Have:**
 - [ ] Multiple Top Modules (4 total)
 - [ ] Multiple Side Modules (4 total)
-- [ ] CSV export functionality
 - [ ] Alert system for signals
 - [ ] Complete backtest filters (date range, session, DOW)
 - [ ] Safety stop loss / take profit plotting
-- [ ] Position labels with full metadata
+- [ ] Multientry capability for trades (don't implement without authorization)
+
 
 ### 12.3 Performance Benchmarks
 
@@ -1043,55 +1036,6 @@ label.new(bar_index, high,
     style = label.style_label_down)
 ```
 
----
-
-## Appendix D: Future Enhancements
-
-### D.1 Planned Features (Post-MVP)
-
-**Advanced Confluence:**
-- Exit-specific grades (separate from entry)
-- Multiple confluence profiles (aggressive, conservative, balanced)
-- Dynamic grade thresholds based on volatility
-- Weighted TF scoring (closer TFs = higher weight)
-
-**Library Ecosystem:**
-- Auto-discovery of published libraries
-- Library marketplace integration
-- Version management for library updates
-- Library testing framework
-
-**Analytics & Export:**
-- Multi-trade correlation analysis
-- Parameter optimization suggestions
-- Real-time performance metrics
-- Integration with external journaling tools (Edgewonk, TraderSync)
-
-**Risk Management:**
-- Dynamic position sizing based on volatility
-- Portfolio heat tracking
-- Correlation-based exposure limits
-- Drawdown-based position reduction
-
-### D.2 Community Requests
-
-**High Priority:**
-- [ ] Multiple chart mark styles (shapes, colors, sizes)
-- [ ] Customizable table positions per module
-- [ ] Conditional alerts (only when Grade A, etc.)
-- [ ] Replay mode compatibility
-
-**Medium Priority:**
-- [ ] Dark/light theme auto-detection
-- [ ] Mobile-optimized table layouts
-- [ ] Multi-symbol backtesting
-- [ ] Strategy templates (pre-configured setups)
-
-**Low Priority:**
-- [ ] Custom color palettes
-- [ ] Sound alerts for specific grades
-- [ ] Integration with Pine v6 strategies
-- [ ] Historical heatmaps
 
 ---
 
@@ -1132,7 +1076,7 @@ label.new(bar_index, high,
 ### F.1 Recommended Approach
 
 **Phase 1: Familiarization (Day 1)**
-1. Read entire PRD (this document)
+1. Read entire PRD (this document) and Claude Transition Document
 2. Review all 5 uploaded codebase files:
    - `Kevbot_Toolkit_v1_0_-_Input_Skeleton.txt` (main indicator)
    - `KevBot_TimeUtils.txt`
@@ -1140,23 +1084,16 @@ label.new(bar_index, high,
    - `KevBot_TF_Placeholder.txt`
    - `KevBot_TF_EMA_Stack.txt`
 3. Understand module dependencies and data flow
-4. Identify incomplete sections (Module 12 - Top Table)
+4. Identify incomplete sections (Trigger and Confluence Options)
 
 **Phase 2: Critical Path (Days 2-3)**
-1. **Top Table Implementation (Module 12)**
-   - Create table structure (similar to Side Table)
-   - Add Confluence Summary row (Long + Short scores/grades)
-   - Add Position Sizing row (current position state)
-   - Add Backtest KPI row (win rate, PF, trades)
-   - Add Top Module 1 row (if enabled)
-
-2. **Label Plotting System**
+1. **Label Plotting System**
    - Plot entry labels with metadata (grade, qty, risk)
    - Plot exit labels with PNL
    - Respect `lbl_*` input toggles
    - Handle invisible labels for data export
 
-3. **Complete Backtest KPIs**
+2. **Complete Backtest KPIs**
    - Profit factor calculation
    - Max drawdown tracking
    - Average win/loss

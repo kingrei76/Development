@@ -1009,39 +1009,10 @@ calcGlobalConfluence(float topLongScore, float topShortScore, bool topReqLongOk,
 // 9.2 Side/TF partial confluence
 
 //──────────────────────────────────────────────────────────────────────────────
-// SIDE TF LIBRARY INTERFACE (A1 signature)
-// This defines the structure returned by any Side-Module TF library.
-// Each TF has a boolean condition + a label string, plus a unified trigger.
-type TFModuleOutput
-    // Per-timeframe confluence condition + table label
-    bool   tf1_cond
-    string tf1_label
-    bool   tf2_cond
-    string tf2_label
-    bool   tf3_cond
-    string tf3_label
-    bool   tf4_cond
-    string tf4_label
-    bool   tf5_cond
-    string tf5_label
-    bool   tf6_cond
-    string tf6_label
-
-    // Unified trigger event (chart timeframe)
-    bool   trigger_event      // TRUE when this module fires its main trigger
-    float  trigger_price      // Price associated with the trigger (NaN if not used)
-    string trigger_label      // Optional short label/descriptor for chart labels
-
-
-// Each library must expose a function following this signature:
-//     TFModuleOutput getTFConfluence(string tf1_res, string tf2_res, string tf3_res,
-//                                    string tf4_res, string tf5_res, string tf6_res,
-//                                    float paramA, float paramB)
-// The Toolkit will call this with the user's selected resolutions + parame 1 – entry-only scoring for now)
-// This block computes how much Side Module 1 contributes to Long and Short
-// confluence score// Side Module 1 – computes how much it contributes/ NOTE: The actual per-TF condition is still a placeholder and currently
-// derived from side1_raw.outD. In a future step, this will be wired to the
-// TF library’s per-timeframe confluence function output
+// SIDE TF CONFLUENCE SCORING
+// NOTE: TFModuleOutput type is imported from the library (side1Lib/tfEMAStack).
+// Each library exposes getTFConfluence() returning per-TF conditions + trigger.
+//──────────────────────────────────────────────────────────────────────────────
 
 float sideLongScore  = 0.0
 float sideShortScore = 0.0
@@ -1137,26 +1108,87 @@ if side1_SEC_enable and side1_enabled and side1_library != "None" and side1_SEC_
         sideReqShortOk := reqOutSE
         sideShortScore += addTF_SE
 
-// NOTE: Long Exit (6.2.1) and Short Exit (6.4.1) TF scores are defined in the
-// inputs but are not yet contributing to confluence grades. Once we introduce
-// separate entry/exit grades, we will add a similar pass here specifically for
-// exit confluence. (6.4.1) TF scores are defined in the
-// inputs but are not yet contributing to confluence grades. Once we introduce
-// separate entry/exit grades, we will add a similar pass here specifically for
-// exit confluence.
+//──────────────────────────────────────────────────────────────────────────────
+// EXIT CONFLUENCE SCORING
+// Exit confluence is tracked separately from entry confluence.
+// These scores determine if exit conditions meet the required TF alignment.
+//──────────────────────────────────────────────────────────────────────────────
 
+float sideLongExitScore  = 0.0
+float sideShortExitScore = 0.0
+bool  sideReqLongExitOk  = true
+bool  sideReqShortExitOk = true
+
+//──────────────────────────────────────────────────────────────────────────────
+// LONG EXIT SIDE CONFLUENCE (uses 6.2.1 settings)
+//──────────────────────────────────────────────────────────────────────────────
+
+if side1_LXC_enable and side1_enabled and side1_library != "None" and side1_LXC_func != "None"
+    bool condLX_tf1 = _kb_tf1_cond
+    bool condLX_tf2 = _kb_tf2_cond
+    bool condLX_tf3 = _kb_tf3_cond
+    bool condLX_tf4 = _kb_tf4_cond
+    bool condLX_tf5 = _kb_tf5_cond
+    bool condLX_tf6 = _kb_tf6_cond
+
+    float addTF_LX = 0.0
+    bool  reqOutLX = true
+    bool  matchOutLX = false
+
+    for _i = 1 to 6
+        int  tfScore = _i == 1 ? side1_LX_tf1 : _i == 2 ? side1_LX_tf2 : _i == 3 ? side1_LX_tf3 : _i == 4 ? side1_LX_tf4 : _i == 5 ? side1_LX_tf5 : side1_LX_tf6
+        bool tfReq   = _i == 1 ? side1_LX_tf1_req : _i == 2 ? side1_LX_tf2_req : _i == 3 ? side1_LX_tf3_req : _i == 4 ? side1_LX_tf4_req : _i == 5 ? side1_LX_tf5_req : side1_LX_tf6_req
+        bool tfInv   = _i == 1 ? side1_LX_tf1_inv : _i == 2 ? side1_LX_tf2_inv : _i == 3 ? side1_LX_tf3_inv : _i == 4 ? side1_LX_tf4_inv : _i == 5 ? side1_LX_tf5_inv : side1_LX_tf6_inv
+        bool tfCond  = _i == 1 ? condLX_tf1 : _i == 2 ? condLX_tf2 : _i == 3 ? condLX_tf3 : _i == 4 ? condLX_tf4 : _i == 5 ? condLX_tf5 : condLX_tf6
+
+        [addTF_LX, reqOutLX, matchOutLX] = _kb_evalSideTF(tfScore, tfReq, tfInv, tfCond, sideReqLongExitOk)
+        sideReqLongExitOk := reqOutLX
+        sideLongExitScore += addTF_LX
+
+//──────────────────────────────────────────────────────────────────────────────
+// SHORT EXIT SIDE CONFLUENCE (uses 6.4.1 settings)
+//──────────────────────────────────────────────────────────────────────────────
+
+if side1_SXC_enable and side1_enabled and side1_library != "None" and side1_SXC_func != "None"
+    bool condSX_tf1 = _kb_tf1_cond
+    bool condSX_tf2 = _kb_tf2_cond
+    bool condSX_tf3 = _kb_tf3_cond
+    bool condSX_tf4 = _kb_tf4_cond
+    bool condSX_tf5 = _kb_tf5_cond
+    bool condSX_tf6 = _kb_tf6_cond
+
+    float addTF_SX = 0.0
+    bool  reqOutSX = true
+    bool  matchOutSX = false
+
+    for _i = 1 to 6
+        int  tfScore = _i == 1 ? side1_SX_tf1 : _i == 2 ? side1_SX_tf2 : _i == 3 ? side1_SX_tf3 : _i == 4 ? side1_SX_tf4 : _i == 5 ? side1_SX_tf5 : side1_SX_tf6
+        bool tfReq   = _i == 1 ? side1_SX_tf1_req : _i == 2 ? side1_SX_tf2_req : _i == 3 ? side1_SX_tf3_req : _i == 4 ? side1_SX_tf4_req : _i == 5 ? side1_SX_tf5_req : side1_SX_tf6_req
+        bool tfInv   = _i == 1 ? side1_SX_tf1_inv : _i == 2 ? side1_SX_tf2_inv : _i == 3 ? side1_SX_tf3_inv : _i == 4 ? side1_SX_tf4_inv : _i == 5 ? side1_SX_tf5_inv : side1_SX_tf6_inv
+        bool tfCond  = _i == 1 ? condSX_tf1 : _i == 2 ? condSX_tf2 : _i == 3 ? condSX_tf3 : _i == 4 ? condSX_tf4 : _i == 5 ? condSX_tf5 : condSX_tf6
+
+        [addTF_SX, reqOutSX, matchOutSX] = _kb_evalSideTF(tfScore, tfReq, tfInv, tfCond, sideReqShortExitOk)
+        sideReqShortExitOk := reqOutSX
+        sideShortExitScore += addTF_SX
 
 // 9.3 Global confluence
 ConfluenceResult _kb_conf =calcGlobalConfluence(topLongScore, topShortScore,topReqLongOk, topReqShortOk,sideLongScore, sideShortScore,sideReqLongOk, sideReqShortOk,gradeC_long, gradeB_long, gradeA_long,gradeC_short, gradeB_short, gradeA_short)
 
 
 // 9.4 Expose for other modules (Position Engine + Top Table)
+// Entry confluence
 float  _kb_longScore   = _kb_conf.longScore
 float  _kb_shortScore  = _kb_conf.shortScore
 bool   _kb_longReqOk   = _kb_conf.longReqOk
 bool   _kb_shortReqOk  = _kb_conf.shortReqOk
 string _kb_longGrade   = _kb_conf.longGrade
 string _kb_shortGrade  = _kb_conf.shortGrade
+
+// 9.5 Exit confluence exposure
+float  _kb_longExitScore   = sideLongExitScore
+float  _kb_shortExitScore  = sideShortExitScore
+bool   _kb_longExitReqOk   = sideReqLongExitOk
+bool   _kb_shortExitReqOk  = sideReqShortExitOk
 
 
 //━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1221,31 +1253,32 @@ else if sizer_entry == "Entry Trigger + Grade A"
 //──────────────────────────────────────────────────────────────────────────────
 
 // Resolve whether exits are allowed for long/short based on Position Exit
-// Method and (eventually) confluence grades.
+// Method, confluence grades, AND exit TF requirements.
 
 bool _kb_longExitOK  = false
 bool _kb_shortExitOK = false
 
 // Long exits
+// Exit confluence requirements must pass if any exit TF scores are configured
 if sizer_exit == "First Exit Trigger" or sizer_exit == "Library Custom"
-    // Raw exits only; ignore confluence and requireds, but gated by position.
-    _kb_longExitOK := rawLongExit
+    // Raw exits only, but still check exit TF requirements if configured
+    _kb_longExitOK := rawLongExit and _kb_longExitReqOk
 else if sizer_exit == "Exit Trigger + Grade C"
-    _kb_longExitOK := rawLongExit and _kb_gradeAtLeast(_kb_longGrade, "C")
+    _kb_longExitOK := rawLongExit and _kb_gradeAtLeast(_kb_longGrade, "C") and _kb_longExitReqOk
 else if sizer_exit == "Exit Trigger + Grade B"
-    _kb_longExitOK := rawLongExit and _kb_gradeAtLeast(_kb_longGrade, "B")
+    _kb_longExitOK := rawLongExit and _kb_gradeAtLeast(_kb_longGrade, "B") and _kb_longExitReqOk
 else if sizer_exit == "Exit Trigger + Grade A"
-    _kb_longExitOK := rawLongExit and _kb_gradeAtLeast(_kb_longGrade, "A")
+    _kb_longExitOK := rawLongExit and _kb_gradeAtLeast(_kb_longGrade, "A") and _kb_longExitReqOk
 
 // Short exits
 if sizer_exit == "First Exit Trigger" or sizer_exit == "Library Custom"
-    _kb_shortExitOK := rawShortExit
+    _kb_shortExitOK := rawShortExit and _kb_shortExitReqOk
 else if sizer_exit == "Exit Trigger + Grade C"
-    _kb_shortExitOK := rawShortExit and _kb_gradeAtLeast(_kb_shortGrade, "C")
+    _kb_shortExitOK := rawShortExit and _kb_gradeAtLeast(_kb_shortGrade, "C") and _kb_shortExitReqOk
 else if sizer_exit == "Exit Trigger + Grade B"
-    _kb_shortExitOK := rawShortExit and _kb_gradeAtLeast(_kb_shortGrade, "B")
+    _kb_shortExitOK := rawShortExit and _kb_gradeAtLeast(_kb_shortGrade, "B") and _kb_shortExitReqOk
 else if sizer_exit == "Exit Trigger + Grade A"
-    _kb_shortExitOK := rawShortExit and _kb_gradeAtLeast(_kb_shortGrade, "A")
+    _kb_shortExitOK := rawShortExit and _kb_gradeAtLeast(_kb_shortGrade, "A") and _kb_shortExitReqOk
 
 //──────────────────────────────────────────────────────────────────────────────
 // 10.3 Position State Machine
@@ -1376,17 +1409,51 @@ var float bt_maxDrawdown = 0.0    // as fraction (0.075 = 7.5%)
 var float bt_peakEquity  = 0.0    // best realized PNL so far
 
 //──────────────────────────────────────────────────────────────────────────────
-// Helper: compute position size based on Risk Mode
-// Single-line arrow function to avoid line-continuation issues.
-_kb_calcQty(float price) => riskMode == "Share Qty" ? defShares : riskMode == "Fixed $ Risk" ? (defRisk / (price * 0.01)) : riskMode == "Percentage Risk" ? ((acctSize * defRiskPct * 0.01) / (price * 0.01)) : defShares
+// Helper: compute position size based on Risk Mode + Grade Multipliers
+// dir: 1=long, -1=short
+_kb_calcQty(float price, int dir) =>
+    // Base quantity from risk mode
+    float baseQty = riskMode == "Share Qty" ? defShares : riskMode == "Fixed $ Risk" ? (defRisk / (price * 0.01)) : riskMode == "Percentage Risk" ? ((acctSize * defRiskPct * 0.01) / (price * 0.01)) : defShares
+
+    // Apply grade-based risk multiplier
+    float mult = 1.0
+    if dir == 1
+        // Long multipliers
+        mult := _kb_longGrade == "A" ? mult_AL : _kb_longGrade == "B" ? mult_BL : _kb_longGrade == "C" ? mult_CL : 1.0
+    else if dir == -1
+        // Short multipliers
+        mult := _kb_shortGrade == "A" ? mult_AS : _kb_shortGrade == "B" ? mult_BS : _kb_shortGrade == "C" ? mult_CS : 1.0
+
+    baseQty * mult
 
 //──────────────────────────────────────────────────────────────────────────────
-// ENTRY LOGIC
-
+// 11.0 BACKTEST FILTERS
 //──────────────────────────────────────────────────────────────────────────────
 
-bool _longEntry  = positionLongEntry
-bool _shortEntry = positionShortEntry
+// Window filter: check if current bar is within the backtest window
+bool _bt_windowOk = true
+if backWindow == "Fixed Bars"
+    _bt_windowOk := bar_index >= (last_bar_index - backBars)
+else if backWindow == "Date Range"
+    _bt_windowOk := time >= backStartDate and (not backUseEnd or time <= backEndDate)
+
+// Session filter: check if current bar is within the allowed time of day
+bool _bt_sessionOk = not na(time(timeframe.period, backSession))
+
+// Day of week filter: check if current day is allowed
+// dayofweek: 1=Sunday, 2=Monday, 3=Tuesday, 4=Wednesday, 5=Thursday, 6=Friday, 7=Saturday
+int _bt_dow = dayofweek
+bool _bt_dowOk = (_bt_dow == 2 and backUseDOW_M) or (_bt_dow == 3 and backUseDOW_T) or (_bt_dow == 4 and backUseDOW_W) or (_bt_dow == 5 and backUseDOW_Th) or (_bt_dow == 6 and backUseDOW_F) or (_bt_dow == 7 and backUseDOW_Sa) or (_bt_dow == 1 and backUseDOW_Su)
+
+// Combined filter: all conditions must pass for entries
+bool _kb_btFilterPass = _bt_windowOk and _bt_sessionOk and _bt_dowOk
+
+//──────────────────────────────────────────────────────────────────────────────
+// ENTRY LOGIC (gated by backtest filters)
+//──────────────────────────────────────────────────────────────────────────────
+
+bool _longEntry  = positionLongEntry and _kb_btFilterPass
+bool _shortEntry = positionShortEntry and _kb_btFilterPass
 
 float _entryFill = close   // assume filled at close for now
 
@@ -1395,12 +1462,12 @@ if _longEntry and not bt_positionActive
     bt_positionActive := true
     bt_positionSide   := "LONG"
     bt_entryPrice     := _entryFill
-    bt_qty            := _kb_calcQty(_entryFill)
+    bt_qty            := _kb_calcQty(_entryFill, 1)
     bt_stackCount     := 1
 
-// stacking additional entries while already in a long
+// stacking additional entries while already in a long (also filtered)
 if _longEntry and bt_positionActive and bt_positionSide == "LONG" and sizerAllowMulti and bt_stackCount < sizerMaxEntries
-    bt_qty        += _kb_calcQty(_entryFill)
+    bt_qty        += _kb_calcQty(_entryFill, 1)
     bt_entryPrice := (bt_entryPrice * bt_stackCount + _entryFill) / (bt_stackCount + 1)
     bt_stackCount += 1
 
@@ -1409,12 +1476,12 @@ if _shortEntry and not bt_positionActive
     bt_positionActive := true
     bt_positionSide   := "SHORT"
     bt_entryPrice     := _entryFill
-    bt_qty            := _kb_calcQty(_entryFill)
+    bt_qty            := _kb_calcQty(_entryFill, -1)
     bt_stackCount     := 1
 
-// stacking additional entries while already in a short
+// stacking additional entries while already in a short (also filtered)
 if _shortEntry and bt_positionActive and bt_positionSide == "SHORT" and sizerAllowMulti and bt_stackCount < sizerMaxEntries
-    bt_qty        += _kb_calcQty(_entryFill)
+    bt_qty        += _kb_calcQty(_entryFill, -1)
     bt_entryPrice := (bt_entryPrice * bt_stackCount + _entryFill) / (bt_stackCount + 1)
     bt_stackCount += 1
 
@@ -1647,7 +1714,7 @@ else if sl_method == "Candle Wicks"
     s_slPrice := low[sl_lookback] - sl_pad
 string s_SL = str.tostring(s_slPrice)
 
-float ps_qty = _kb_calcQty(close)
+float ps_qty = _kb_calcQty(close, 1)  // Display uses long direction by default
 string s_QTY = str.tostring(ps_qty)
 string s_RISK = riskMode == "Share Qty" ? "Shares" : riskMode == "Fixed $ Risk" ? str.tostring(defRisk) : str.tostring(defRiskPct) + "%"
 
