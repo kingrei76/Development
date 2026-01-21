@@ -158,9 +158,8 @@ export getTFConfluence(
     simple int lenM = int(math.max(1, math.round(paramB)))
     simple int lenL = int(math.max(1, math.round(paramC)))
 
-    // Keep paramD, E, F alive (they can be used for future extensions)
-    float _keepAlive = paramD + paramE + paramF
-    bool _useParams = _keepAlive == _keepAlive
+    // Reserved params (D/E/F) - used in trigger label to satisfy compiler
+    float _reservedSum = paramD + paramE + paramF
 
     // Per-TF stepped HTF closes
     float c1_src = _getClose(tf1_res)
@@ -224,7 +223,7 @@ export getTFConfluence(
 
     // Determine active trigger for metadata
     bool anyTrig = tA or tB or tC or tD or tE or tF
-    float trigPx = anyTrig ? close : na
+    float trigPx = anyTrig ? close + (_reservedSum * 0) : na  // _reservedSum used to satisfy compiler
     string trigLab = tA ? "S>M" : tB ? "S<M" : tC ? "S>L" : tD ? "S<L" : tE ? "M>L" : tF ? "M<L" : "None"
 
     TFModuleOutput.new(
